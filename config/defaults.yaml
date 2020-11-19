@@ -1,0 +1,10 @@
+custom_i2c_server:
+    ros__parameters:
+        
+        topics:
+            out_spur_gear_encoder: "/hw/g"  
+            
+        i2c:
+            device: "dev/i2c-1" # [string] path to i2c device in memory
+            speed: 1000 # [milliseconds] time between each reading
+        
