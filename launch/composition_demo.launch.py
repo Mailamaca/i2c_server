@@ -28,13 +28,13 @@ def generate_launch_description():
             executable='component_container',
             composable_node_descriptions=[
                 ComposableNode(
-                    package='composition',
-                    plugin='composition::Talker',
-                    name='talker'),
+                    package='i2c_server',
+                    plugin='i2c_server::I2CServer',
+                    name='server'),
                 ComposableNode(
-                    package='composition',
-                    plugin='composition::Listener',
-                    name='listener')
+                    package='i2c_server',
+                    plugin='i2c_client::I2CClient',
+                    name='client')
             ],
             output='screen',
     )

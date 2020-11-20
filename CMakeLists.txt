@@ -33,6 +33,17 @@ ament_target_dependencies(i2c_server_component
 rclcpp_components_register_nodes(i2c_server_component "i2c_server::I2CServer")
 set(node_plugins "${node_plugins}i2c_server::I2CServer;$<TARGET_FILE:i2c_server_component>\n")
 
+add_library(i2c_client_component SHARED
+  src/i2c_client_component.cpp)
+target_compile_definitions(i2c_client_component
+  PRIVATE "COMPOSITION_BUILDING_DLL")
+ament_target_dependencies(i2c_client_component
+  "i2c_interfaces"
+  "rclcpp"
+  "rclcpp_components")
+rclcpp_components_register_nodes(i2c_client_component "i2c_client::I2CClient")
+set(node_plugins "${node_plugins}i2c_client::I2CClient;$<TARGET_FILE:i2c_client_component>\n")
+
 # since the package installs libraries without exporting them
 # it needs to make sure that the library path is being exported
 if(NOT WIN32)
@@ -66,6 +77,7 @@ ament_target_dependencies(dlopen_composition
 
 install(TARGETS
   i2c_server_component
+  i2c_client_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)

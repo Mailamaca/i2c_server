@@ -46,9 +46,7 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
     std::shared_ptr<i2c_interfaces::srv::I2cRead::Response> response
     ) -> void
     {
-      RCLCPP_INFO(
-        this->get_logger(), "Incoming request 'read': [slave: %d, register: %d]",
-        request->slave, request->reg);
+      //RCLCPP_INFO(this->get_logger(), "Incoming request 'read': [slave: %d, register: %d]",request->slave, request->reg);
       
       // request data
       uint8_t slave = request->slave;
@@ -60,19 +58,26 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
       bool ok = false;
       
       // select slave
-      if (selectSlave(fd, slave)) {
+      if (selectSlave(slave)) {
         // Send the register to read from
         if (write(fd, &reg, 1) == 1) {
           // read data
           if (read(fd, buffer, length) == length) {           
             ok = true;
+          } else {
+            RCLCPP_INFO(this->get_logger(), "error on read");
           }
+        } else {
+          RCLCPP_INFO(this->get_logger(), "error on write");
         }      
+      } else {
+        RCLCPP_INFO(this->get_logger(), "error on selectSlave");
       }
       
       std::vector<uint8_t> vectData;
       for (int i=0; i < length; i++) {
         vectData.push_back(buffer[i]);
+        //RCLCPP_INFO(this->get_logger(), "bytes read: [%d] = %d",i,buffer[i]);
       }      
       
             
@@ -87,9 +92,7 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
     std::shared_ptr<i2c_interfaces::srv::I2cWrite::Response> response
     ) -> void
     {
-      RCLCPP_INFO(
-        this->get_logger(), "Incoming request 'write': [slave: %d, register: %d]",
-        request->slave, request->reg);
+      //RCLCPP_INFO( this->get_logger(), "Incoming request 'write': [slave: %d, register: %d]",request->slave, request->reg);
       
       // request data
       uint8_t slave = request->slave;
@@ -101,7 +104,7 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
       bool ok = false;
       
       // select slave
-      if (selectSlave(fd, slave)) {
+      if (selectSlave(slave)) {
         // write data
         uint8_t* write_buffer = new uint8_t[length+2];
         write_buffer[0] = reg;
@@ -122,7 +125,7 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
   
 }
 
-bool I2CServer::selectSlave(int fd, int addr) {
+bool I2CServer::selectSlave(int addr) {
     
     // initialize i2c if not initialized
     if (fd == -1) {
@@ -130,18 +133,22 @@ bool I2CServer::selectSlave(int fd, int addr) {
       char device[16];
       sprintf(device, "/dev/i2c-%d", bus);
       if ((fd = open(device, O_RDWR)) < 0) {
+        RCLCPP_INFO(this->get_logger(), "error on open: %d", fd);
         // ERROR Open port for reading and writing
         return false;
       }
+      RCLCPP_INFO(this->get_logger(), "open ok, fd=%d", fd);
     }
   
     // open slave
     int s;
     s = ioctl(fd, I2C_SLAVE, addr);
     if (s == -1) {
+      RCLCPP_INFO(this->get_logger(), "error on ioctl: %d", s);
        // ERROR! no slave
        return false;
     }
+    //RCLCPP_INFO(this->get_logger(), "ioctl ok, s= %d", s);
     return true;
 }
 

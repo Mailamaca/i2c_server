@@ -12,32 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef COMPOSITION__I2C_SERVER_COMPONENT_HPP_
-#define COMPOSITION__I2C_SERVER_COMPONENT_HPP_
+#ifndef COMPOSITION__I2C_CLIENT_COMPONENT_HPP_
+#define COMPOSITION__I2C_CLIENT_COMPONENT_HPP_
 
 #include "i2c_server/visibility_control.h"
 #include "i2c_interfaces/srv/i2c_read.hpp"
 #include "i2c_interfaces/srv/i2c_write.hpp"
 #include "rclcpp/rclcpp.hpp"
 
-namespace i2c_server
+namespace i2c_client
 {
 
-class I2CServer : public rclcpp::Node
+class I2CClient : public rclcpp::Node
 {
 public:
   COMPOSITION_PUBLIC
-  explicit I2CServer(const rclcpp::NodeOptions & options);
+  explicit I2CClient(const rclcpp::NodeOptions & options);
 
 private:
-  rclcpp::Service<i2c_interfaces::srv::I2cRead>::SharedPtr srv_read;
-  rclcpp::Service<i2c_interfaces::srv::I2cWrite>::SharedPtr srv_write;
+  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::Client<i2c_interfaces::srv::I2cRead>::SharedPtr client_read;
+  rclcpp::Client<i2c_interfaces::srv::I2cWrite>::SharedPtr client_write;
   
-  bool selectSlave(int addr);
+  bool selectSlave(int fd, int addr);
+
+  void on_timer();
   
   int fd = -1;
+
+  int value;
 };
 
-}  // namespace i2c_server
+}  // namespace i2c_client
 
-#endif  // COMPOSITION__I2C_SERVER_COMPONENT_HPP_
+#endif  // COMPOSITION__I2C_CLIENT_COMPONENT_HPP_
