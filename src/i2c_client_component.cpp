@@ -43,7 +43,7 @@ I2CClient::I2CClient(const rclcpp::NodeOptions & options)
 : Node("I2CClient", options)
 {
 
-  client_read = create_client<i2c_interfaces::srv::I2cRead>("i2c_read");
+  client_command = create_client<i2c_interfaces::srv::I2cCommand>("i2c_command");
   timer_ = create_wall_timer(10ms, std::bind(&I2CClient::on_timer, this));
 
   
@@ -51,7 +51,7 @@ I2CClient::I2CClient(const rclcpp::NodeOptions & options)
 
 void I2CClient::on_timer()
 {
-  if (!client_read->wait_for_service(1s)) {
+  if (!client_command->wait_for_service(1s)) {
     if (!rclcpp::ok()) {
       RCLCPP_ERROR(
         this->get_logger(),
@@ -62,18 +62,19 @@ void I2CClient::on_timer()
     return;
   }
 
-  auto request = std::make_shared<i2c_interfaces::srv::I2cRead::Request>();
+  auto request = std::make_shared<i2c_interfaces::srv::I2cCommand::Request>();
   request->slave = 0x09;
   request->reg = 3;
   request->length = 2;
+  request->write = false;
 
   using ServiceResponseFuture =
-    rclcpp::Client<i2c_interfaces::srv::I2cRead>::SharedFuture;
+    rclcpp::Client<i2c_interfaces::srv::I2cCommand>::SharedFuture;
   auto response_received_callback = [this](ServiceResponseFuture future) {
 
       //RCLCPP_INFO(this->get_logger(), "Got result: [%" PRId64 "]", future.get()->ok);
 
-      uint8_t *buffer = future.get()->data.data();
+      uint8_t *buffer = future.get()->data_received.data();
       int16_t newValue;
       std::memcpy(&newValue, buffer, sizeof(newValue));
       if (newValue-value==1) {
@@ -85,13 +86,13 @@ void I2CClient::on_timer()
       }
       value = newValue;
 
-      std::vector<uint8_t> vectData = future.get()->data;
+      std::vector<uint8_t> vectData = future.get()->data_received;
       for (int i=0; i < vectData.size(); i++) {
         //RCLCPP_INFO(this->get_logger(), "bytes read: [%d] = %d",i,vectData.at(i));
       } 
 
     };
-  auto future_result = client_read->async_send_request(request, response_received_callback);
+  auto future_result = client_command->async_send_request(request, response_received_callback);
 }
 
 }  // namespace i2c_client

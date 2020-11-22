@@ -40,10 +40,10 @@ namespace i2c_server
 I2CServer::I2CServer(const rclcpp::NodeOptions & options)
 : Node("I2CServer", options)
 {
-  auto handle_i2c_read =
+  auto handle_i2c_command =
     [this](
-    const std::shared_ptr<i2c_interfaces::srv::I2cRead::Request> request,
-    std::shared_ptr<i2c_interfaces::srv::I2cRead::Response> response
+    const std::shared_ptr<i2c_interfaces::srv::I2cCommand::Request> request,
+    std::shared_ptr<i2c_interfaces::srv::I2cCommand::Response> response
     ) -> void
     {
       //RCLCPP_INFO(this->get_logger(), "Incoming request 'read': [slave: %d, register: %d]",request->slave, request->reg);
@@ -52,76 +52,69 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
       uint8_t slave = request->slave;
       uint8_t reg = request->reg;
       uint8_t length = request->length;
+      bool write_cmd = request->write;
+      uint8_t *data_to_write = request->data_to_send.data();
       
       // response data
-      uint8_t* buffer = new uint8_t[length];
-      bool ok = false;
-      
+      uint8_t* data_received = new uint8_t[length];
+
+
       // select slave
-      if (selectSlave(slave)) {
-        // Send the register to read from
-        if (write(fd, &reg, 1) == 1) {
-          // read data
-          if (read(fd, buffer, length) == length) {           
-            ok = true;
-          } else {
-            RCLCPP_INFO(this->get_logger(), "error on read");
-          }
-        } else {
-          RCLCPP_INFO(this->get_logger(), "error on write");
-        }      
-      } else {
-        RCLCPP_INFO(this->get_logger(), "error on selectSlave");
+      if (!selectSlave(slave)) {
+        RCLCPP_WARN(
+          this->get_logger(),
+          "error on selectSlave");
+        response->ok = false;
+        return;      
       }
-      
-      std::vector<uint8_t> vectData;
-      for (int i=0; i < length; i++) {
-        vectData.push_back(buffer[i]);
-        //RCLCPP_INFO(this->get_logger(), "bytes read: [%d] = %d",i,buffer[i]);
-      }      
-      
-            
-      // populate response
-      response->ok = ok;
-      response->data = vectData;
-    };
-    
-  auto handle_i2c_write =
-    [this](
-    const std::shared_ptr<i2c_interfaces::srv::I2cWrite::Request> request,
-    std::shared_ptr<i2c_interfaces::srv::I2cWrite::Response> response
-    ) -> void
-    {
-      //RCLCPP_INFO( this->get_logger(), "Incoming request 'write': [slave: %d, register: %d]",request->slave, request->reg);
-      
-      // request data
-      uint8_t slave = request->slave;
-      uint8_t reg = request->reg;
-      uint8_t length = request->length;
-      uint8_t *buffer = request->data.data();
-            
-      // response data
-      bool ok = false;
-      
-      // select slave
-      if (selectSlave(slave)) {
+
+      if (write_cmd) {
         // write data
-        uint8_t* write_buffer = new uint8_t[length+2];
+        uint8_t* write_buffer = new uint8_t[length+1];
         write_buffer[0] = reg;
         for (int i=0; i<length; i++){
-          write_buffer[i+1] = buffer[i];
+          write_buffer[i+1] = data_to_write[i];
         }         
-        if (write(fd, write_buffer, length+1) == 1) {
-          ok = true;
-        }      
-      }
-      
-      // populate response
-      response->ok = ok;
-    }; 
+        if (write(fd, write_buffer, length+1) != length+1) {
+          RCLCPP_WARN(
+            this->get_logger(),
+            "error on write");
+          response->ok = false;
+          return; 
+        }
+        // ok
+        response->ok = true;
 
-  srv_read = create_service<i2c_interfaces::srv::I2cRead>("i2c_read", handle_i2c_read);
-  srv_write = create_service<i2c_interfaces::srv::I2cWrite>("i2c_write", handle_i2c_write);
+      } else {
+        // Send the register to read from
+        if (write(fd, &reg, 1) != 1) {
+          RCLCPP_WARN(
+            this->get_logger(),
+            "error on write");
+          response->ok = false;
+          return;
+        }
+        // read data
+        if (read(fd, data_received, length) != length) {
+          RCLCPP_WARN(
+            this->get_logger(),
+            "error on read");
+          response->ok = false;
+          return;
+        }
+        // copy data received to vector
+        std::vector<uint8_t> vectData;
+        for (int i=0; i < length; i++) {
+          vectData.push_back(data_received[i]);
+          //RCLCPP_INFO(this->get_logger(), "bytes read: [%d] = %d",i,data_received[i]);
+        }
+        // ok
+        response->data_received = vectData;
+        response->ok = true;
+      } 
+    };  
+
+  i2c_service = create_service<i2c_interfaces::srv::I2cCommand>("i2c_command", handle_i2c_command);
   
 }
 

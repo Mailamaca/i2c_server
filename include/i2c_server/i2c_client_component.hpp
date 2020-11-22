@@ -16,8 +16,7 @@
 #define COMPOSITION__I2C_CLIENT_COMPONENT_HPP_
 
 #include "i2c_server/visibility_control.h"
-#include "i2c_interfaces/srv/i2c_read.hpp"
-#include "i2c_interfaces/srv/i2c_write.hpp"
+#include "i2c_interfaces/srv/i2c_command.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 namespace i2c_client
@@ -31,8 +30,7 @@ public:
 
 private:
   rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::Client<i2c_interfaces::srv::I2cRead>::SharedPtr client_read;
-  rclcpp::Client<i2c_interfaces::srv::I2cWrite>::SharedPtr client_write;
+  rclcpp::Client<i2c_interfaces::srv::I2cCommand>::SharedPtr client_command;
   
   bool selectSlave(int fd, int addr);
 
@@ -41,6 +39,7 @@ private:
   int fd = -1;
 
   int value;
+  
 };
 
 }  // namespace i2c_client

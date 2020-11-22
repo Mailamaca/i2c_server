@@ -16,8 +16,7 @@
 #define COMPOSITION__I2C_SERVER_COMPONENT_HPP_
 
 #include "i2c_server/visibility_control.h"
-#include "i2c_interfaces/srv/i2c_read.hpp"
-#include "i2c_interfaces/srv/i2c_write.hpp"
+#include "i2c_interfaces/srv/i2c_command.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 namespace i2c_server
@@ -30,8 +29,7 @@ public:
   explicit I2CServer(const rclcpp::NodeOptions & options);
 
 private:
-  rclcpp::Service<i2c_interfaces::srv::I2cRead>::SharedPtr srv_read;
-  rclcpp::Service<i2c_interfaces::srv::I2cWrite>::SharedPtr srv_write;
+  rclcpp::Service<i2c_interfaces::srv::I2cCommand>::SharedPtr i2c_service;
   
   bool selectSlave(int addr);
   

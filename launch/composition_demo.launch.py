@@ -15,28 +15,38 @@
 """Launch a talker and a listener in a component container."""
 
 import launch
+from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
-
+import os
 
 def generate_launch_description():
+    
     """Generate launch description with multiple components."""
     container = ComposableNodeContainer(
             name='my_container',
-            namespace='',
+            namespace='maila',
             package='rclcpp_components',
             executable='component_container',
             composable_node_descriptions=[
                 ComposableNode(
                     package='i2c_server',
                     plugin='i2c_server::I2CServer',
-                    name='server'),
+                    name='custom_i2c_server'),
                 ComposableNode(
-                    package='i2c_server',
-                    plugin='i2c_client::I2CClient',
-                    name='client')
+                    package='joystick_command',
+                    plugin='motor::JoystickCommand',
+                    name='custom_joystick_command',
+                    parameters = [os.path.join(get_package_share_directory('joystick_command'),"config","defaults.yaml")]),
+                ComposableNode(
+                    package='motors_interface',
+                    plugin='motor::MotorComponent',
+                    name='custom_motors_interface',
+                    parameters = [os.path.join(get_package_share_directory('motors_interface'),"config","defaults.yaml")])
+                    #parameters=[{'topics.in_mode':"cucu"}])
             ],
             output='screen',
+            emulate_tty=True,
     )
 
     return launch.LaunchDescription([container])
