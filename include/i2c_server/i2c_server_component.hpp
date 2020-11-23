@@ -32,6 +32,9 @@ private:
   rclcpp::Service<i2c_interfaces::srv::I2cCommand>::SharedPtr i2c_service;
   
   bool selectSlave(int addr);
+
+  uint8_t write_buffer[256];
+  uint8_t received_buffer[256];
   
   int fd = -1;
 };

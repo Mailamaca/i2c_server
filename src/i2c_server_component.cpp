@@ -46,18 +46,31 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
     std::shared_ptr<i2c_interfaces::srv::I2cCommand::Response> response
     ) -> void
     {
-      //RCLCPP_INFO(this->get_logger(), "Incoming request 'read': [slave: %d, register: %d]",request->slave, request->reg);
+      /*RCLCPP_INFO(this->get_logger(),
+        "Incoming request 'command': \
+        [slave: %d, \
+        register: %d, \
+        length: %d, \
+        write_cmd: %b",
+        request->slave,
+        request->reg,
+        request->length,
+        request->write);
+      
+      if (request->write && request->length > 1) {
+        RCLCPP_INFO(this->get_logger(),
+        "[data0: %d, \
+        data1: %d]",
+        request->data_to_send.at(0),
+        request->data_to_send.at(1));
+      }*/
       
       // request data
       uint8_t slave = request->slave;
       uint8_t reg = request->reg;
       uint8_t length = request->length;
       bool write_cmd = request->write;
-      uint8_t *data_to_write = request->data_to_send.data();
-      
-      // response data
-      uint8_t* data_received = new uint8_t[length];
-
+      std::vector<uint8_t> data_to_send = request->data_to_send;
 
       // select slave
       if (!selectSlave(slave)) {
@@ -70,12 +83,23 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
 
       if (write_cmd) {
         // write data
-        uint8_t* write_buffer = new uint8_t[length+1];
+        int wlength = length+1;
         write_buffer[0] = reg;
         for (int i=0; i<length; i++){
-          write_buffer[i+1] = data_to_write[i];
-        }         
-        if (write(fd, write_buffer, length+1) != length+1) {
+          write_buffer[i+1] = data_to_send.at(i);
+        }     
+
+        /*if (request->write && request->length > 1) {
+          RCLCPP_INFO(this->get_logger(),
+          "[data0: %d, \
+          data1: %d,\
+          data2: %d]",
+          write_buffer[0],
+          write_buffer[1],
+          write_buffer[2]);
+        }*/
+
+        if (write(fd, write_buffer, wlength) != wlength) {
           RCLCPP_WARN(
             this->get_logger(),
             "error on write");
@@ -95,7 +119,7 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
           return;
         }
         // read data
-        if (read(fd, data_received, length) != length) {
+        if (read(fd, received_buffer, length) != length) {
           RCLCPP_WARN(
             this->get_logger(),
             "error on read");
@@ -105,7 +129,7 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
         // copy data received to vector
         std::vector<uint8_t> vectData;
         for (int i=0; i < length; i++) {
-          vectData.push_back(data_received[i]);
+          vectData.push_back(received_buffer[i]);
           //RCLCPP_INFO(this->get_logger(), "bytes read: [%d] = %d",i,data_received[i]);
         }
         // ok
