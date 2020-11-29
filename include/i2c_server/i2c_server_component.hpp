@@ -19,6 +19,8 @@
 #include "i2c_interfaces/srv/i2c_command.hpp"
 #include "rclcpp/rclcpp.hpp"
 
+#include <unistd.h>
+
 namespace i2c_server
 {
 

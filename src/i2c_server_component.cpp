@@ -22,15 +22,22 @@
 #include <iostream>
 #include <memory>
 
+#include <unistd.h>        //Needed for I2C port
+#include <fcntl.h>          //Needed for I2C port
+#include <sys/ioctl.h>      //Needed for I2C port
+#include <linux/i2c-dev.h>  //Needed for I2C port
+#include <linux/i2c.h>      //Needed for I2C port
+
 extern "C" {
-  #include <linux/i2c.h>
-  #include <linux/i2c-dev.h>
+  //#include <linux/i2c.h>
+  
+  //#include <i2c/smbus.h>
   #include <sys/ioctl.h>
   #include <stdio.h>
   #include <stdlib.h>
-  #include <fcntl.h>
+  //#include <fcntl.h>
   #include <errno.h>
-  #include <unistd.h>
+  //#include <unistd.h>
 }
 
 
@@ -80,6 +87,7 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
         response->ok = false;
         return;      
       }
+      usleep(100);
 
       if (write_cmd) {
         // write data
@@ -110,6 +118,53 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
         response->ok = true;
 
       } else {
+
+
+        /*// using smbus (https://stackoverflow.com/questions/55976683/read-a-block-of-data-from-a-specific-registerfifo-using-c-c-and-i2c-in-raspb)
+        struct i2c_smbus_ioctl_data ioctl_data;
+        union i2c_smbus_data smbus_data;
+
+        int rv; 
+        if(length > I2C_SMBUS_BLOCK_MAX) 
+        {
+          RCLCPP_WARN(
+            this->get_logger(),
+            "Requested Length is greater than the maximum specified");
+          response->ok = false;
+          return;
+        }
+
+        // First byte is always the size to write and to receive 
+        // https://github.com/torvalds/linux/blob/master/drivers/i2c/i2c-core-smbus.c  
+        // (See i2c_smbus_xfer_emulated CASE:I2C_SMBUS_I2C_BLOCK_DATA)
+        smbus_data.block[0] = length;
+        uint8_t read_write = I2C_SMBUS_READ;     
+
+        ioctl_data.read_write = read_write;
+        ioctl_data.command = reg;
+        ioctl_data.size = I2C_SMBUS_I2C_BLOCK_DATA;
+        ioctl_data.data = &smbus_data;
+
+        rv = ioctl (fd, I2C_SMBUS, &ioctl_data);
+        if (rv < 0) {
+          RCLCPP_WARN(
+            this->get_logger(),
+            "Accessing I2C Read/Write failed!");
+          response->ok = false;
+          return;
+        }
+
+        //RCLCPP_INFO( this->get_logger(), "rv: %d", rv);
+
+        if (read_write == I2C_SMBUS_READ) {
+          for(int i = 0; i < length; i++) {
+            // Skip the first byte, which is the length of the rest of the block.
+            received_buffer[i] = smbus_data.block[i+1];
+          }
+        }
+        */
+
+
         // Send the register to read from
         if (write(fd, &reg, 1) != 1) {
           RCLCPP_WARN(
@@ -118,6 +173,8 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
           response->ok = false;
           return;
         }
+        usleep(10);
+
         // read data
         if (read(fd, received_buffer, length) != length) {
           RCLCPP_WARN(
@@ -126,12 +183,34 @@ I2CServer::I2CServer(const rclcpp::NodeOptions & options)
           response->ok = false;
           return;
         }
+
+        /*RCLCPP_INFO( this->get_logger(),
+              "\nbuffer: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+               received_buffer[0],
+               received_buffer[1],
+               received_buffer[2],
+               received_buffer[3],
+               received_buffer[4],
+               received_buffer[5],
+               received_buffer[6],
+               received_buffer[6],
+               received_buffer[7],
+               received_buffer[8],
+               received_buffer[9],
+               received_buffer[10],
+               received_buffer[11],
+               received_buffer[12],
+               received_buffer[13]
+               );*/
+
+
         // copy data received to vector
         std::vector<uint8_t> vectData;
         for (int i=0; i < length; i++) {
           vectData.push_back(received_buffer[i]);
           //RCLCPP_INFO(this->get_logger(), "bytes read: [%d] = %d",i,data_received[i]);
         }
+
         // ok
         response->data_received = vectData;
         response->ok = true;
